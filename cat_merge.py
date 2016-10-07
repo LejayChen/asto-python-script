@@ -3,30 +3,24 @@ merge catalogs from different bands created by SExtractor
 '''
 
 import sys,os
-from astropy.io import fits
+from astropy.table import *
 
 def merge(filename):
-	cat_u = fits.open(filename+'.u.fits')
-	cat_g = fits.open(filename+'.g.fits') 
-	cat_i = fits.open(filename+'.i.fits') 
-	cat_z = fits.open(filename+'.z.fits') 
-	for i in range(len(cat_g[1].columns)):
-		cat_u[1].columns[i].name += '_U'
-		cat_g[1].columns[i].name += '_G'
-		cat_i[1].columns[i].name += '_I'
-		cat_z[1].columns[i].name += '_Z'
-
-	col_u = cat_u[1].columns
-	col_g = cat_g[1].columns
-	col_i = cat_i[1].columns
-	col_z = cat_z[1].columns
-	new_columns =  col_u + col_g + col_i + col_z
-	hdu = fits.BinTableHDU.from_columns(new_columns)
+	cat_u = Table.read(filename+'.u.cat.fits')
+	cat_g = Table.read(filename+'.g.cat.fits') 
+	cat_i = Table.read(filename+'.i.cat.fits') 
+	cat_z = Table.read(filename+'.z.cat.fits') 
+	common_cols = ['NUMBER','X_IMAGE','Y_IMAGE','ALPHA_J2000','DELTA_J2000']
+	cat_merge = join(cat_u, cat_g, keys=common_cols,table_names=['u','g'],uniq_col_name='{table_name}_{col_name}')
+	cat_merge = join(cat_merge, cat_i, keys=common_cols)
+	cat_merge = join(cat_merge, cat_z, keys=common_cols,table_names=['i','z'],uniq_col_name='{table_name}_{col_name}')
 	try:
-		hdu.writeto(filename+'.ugiz.fits')
+		cat_merge.write(filename+'.ugiz.fits')
+		print cat_merge3.info
 	except IOError:
 		os.system('rm '+filename+'.ugiz.fits')
-		hdu.writeto(filename+'.ugiz.fits')
+		cat_merge.write(filename+'.ugiz.fits')
+		print cat_merge.info
 
 if __name__=='__main__':
 	for i in range(1,len(sys.argv)):
