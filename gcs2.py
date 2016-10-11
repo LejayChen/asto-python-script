@@ -39,22 +39,24 @@ def selection2(u, g, z, g_best, i, i_4):
 filelist = open('den.used').readlines() #list of galaxies
 tbl = Table.read('sdss_data4.fits')  #data from SDSS DR6 and NED
 
+
+#select GC in catalogs around each galaxy
 gc_num = []
 contamination = []
 r_p = []
-gcs = Table()
+fields = []
+gcs = Table()   #contains all GCs (rows from original table)
 M87 = (187.70583333, 12.39111111)   #from NED (for r_p)
-#select GC in catalogs around each galaxy
 for p in range(len(filelist)):
 	item = filelist[p].rstrip()  #index of the galaxy
 
  	w = WCS(item+'.fits')
  	ra_center,dec_center = w.all_pix2world(200.5,200.5,0)# Pixel to WCS
- 	print item#,r_e,tbl[i]['m_M'],ra_center,dec_center
 
  	image = fits.open(item+'.fits')
- 	header = image[0].header
-	field = header['object']  #NGVS field name  
+ 	field = image[0].header['object'] #NGVS field name  
+ 	fields.append(field)
+	print item,field#,r_e,tbl[i]['m_M'],ra_center,dec_center
 
 	r_e = tbl[p]['petroR50_r']  #effective radius : petrosian R50 
 	r =  r_e*4  # r~radius for counting GCs
@@ -95,26 +97,25 @@ for p in range(len(filelist)):
 			indices.append(0)
 	indices = np.array(indices)
 	gcs = vstack([gcs,cat_field2[indices==1]])  #stack GCs counted in each galaxey togeter (total GC number)
-	print tbl[p]['ra']
-	r_p.append(sqrt((tbl['ra'][p]-M87[0])**2+(tbl['dec'][p]-M87[1])**2)*60)  #projected distance from M87  (arcmin)
+	r_p.append(sqrt((tbl['ra'][p]-M87[0])**2+(tbl['dec'][p]-M87[1])**2)/180*pi*16.5)  #projected distance from M87  (degree)
 	gc_num.append(len(indices[indices==1])*2)  #gc_num doubled because of truncation of GCLF
 	contamination.append(len(indices[indices==2])*2) # contamination count  (error bar)
 	
 	cc_diagram(u_all,g_all,z_all,u,g,z,item,indices,field)  #Color-Color Diagram
 	build_reg(item,cat_field2,indices)  #build region file for ds9 use
 
-#caluculate and wirte data, and plot SN
-dEdata = Table(names=('Index','ra','dec','m-M','MV','r_p','SN','SNerr','M_z','SN_z','SN_z_err'),dtype=('a4','f8','f8','f4','f4','f4','f4','f4','f4','f4','f4')) #save galaxy data in text for confirmation
-for i in range(len(filelist)):
 
-	z = tbl[i]['modelMag_z']
+#caluculate and wirte data, and plot SN
+dEdata = Table(names=('Index','field','ra','dec','m-M','MV','r_p','SN','SNerr','M_z','SN_z','SN_z_err'),dtype=('a4','a8','f8','f8','f4','f4','f4','f4','f4','f4','f4','f4')) #save galaxy data in text for confirmation
+for i in range(len(filelist)):
+	z = tbl[i]['modelMag_z']-tbl[i]['extinction_z']
 	m_M = round(tbl[i]['m_M'],1)
 	Mz = round(z -  m_M, 1)  #absolute magnitude
 
-	rp = round(r_p[i], 1)
+	rp = round(r_p[i], 2)
 
 	#absolute magnitude
-	V = tbl[i]['modelMag_g']  - 0.59*( tbl[i]['modelMag_g']  - tbl[i]['modelMag_r']  ) - 0.01  #magnitude transfermation from SDSS to UBV
+	V = tbl[i]['modelMag_g'] - tbl[i]['extinction_g']  - 0.59*( tbl[i]['modelMag_g'] - tbl[i]['extinction_g']  - tbl[i]['modelMag_r'] + tbl[i]['extinction_r']  ) - 0.01  #magnitude transfermation from SDSS to UBV
 	MV = round(V - tbl[i]['m_M'],1) 
 
              # specific frequency
@@ -125,7 +126,7 @@ for i in range(len(filelist)):
 	SN_err = round(contamination[i]*10**(0.4*(MV+ 15)),1)  
 	SN_z_err = round(contamination[i]*10**(0.4*(Mz+ 15)),1)
 
-	dEdata.add_row((filelist[i].rstrip(),round(tbl[i]['ra'],5),round(tbl[i]['dec'],5),m_M,MV,rp,SN,SN_err,Mz,SN_z,SN_z_err))
+	dEdata.add_row((filelist[i].rstrip(),fields[i],round(tbl[i]['ra'],5),round(tbl[i]['dec'],5),m_M,MV,rp,SN,SN_err,Mz,SN_z,SN_z_err))
 
 if os.path.isfile('dEdata.fits'):
 	os.system('rm dEdata.fits')
