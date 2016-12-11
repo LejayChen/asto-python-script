@@ -25,6 +25,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from reg_gcs import *
 from cc_diagram import *
 from plot_SN import *
+from z_plot_SN import *
 import os
 
 def selection2(u, g, z, g_best, i, i_4):
@@ -121,7 +122,7 @@ for i in range(len(filelist)):
 	# gc_bum_intrinsic: GC candidates that belong to the host galaxy
 	gc_num_intrinsic = gc_num[i] - contamination[i]  
 	SN = round(gc_num_intrinsic*10**(0.4*(MV+ 15 )),1)
-	SN_z = round(gc_num[i]*10**(0.4*(Mz+ 15 )),1)
+	SN_z = round(gc_num_intrinsic*10**(0.4*(Mz+ 15 )),1)
 
              #error bar calculated from contamination
              # error = sqrt(gc_num_err^2 + conta_err^2)
@@ -134,3 +135,4 @@ for i in range(len(filelist)):
 gcs.write('gcs.around.dEN.fits',overwrite=True)
 dEdata.write('dEdata.fits',overwrite=True)
 plot_SN()#plot SN_list to MV diagram along with data from literature
+z_plot_SN() #  same in z band
