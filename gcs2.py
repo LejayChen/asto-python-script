@@ -104,7 +104,6 @@ for p in range(len(filelist)):
 	cc_diagram(u_all,g_all,z_all,u,g,z,item,indices,field)  #Color-Color Diagram
 	build_reg(item,cat_field2,indices)  #build region file for ds9 use
 
-
 #caluculate and wirte data, and plot SN
 dEdata = Table(names=('Index','field','ra','dec','m-M','MV','r_p','SN','SNerr','M_z','SN_z','SN_z_err'),dtype=('a4','a8','f8','f8','f4','f4','f4','f4','f4','f4','f4','f4')) #save galaxy data in text for confirmation
 for i in range(len(filelist)):
@@ -114,23 +113,24 @@ for i in range(len(filelist)):
 
 	rp = round(r_p[i], 2)
 
-	#absolute magnitude
+	#absolute magnitude (after extinction correction)
 	V = tbl[i]['modelMag_g'] - tbl[i]['extinction_g']  - 0.59*( tbl[i]['modelMag_g'] - tbl[i]['extinction_g']  - tbl[i]['modelMag_r'] + tbl[i]['extinction_r']  ) - 0.01  #magnitude transfermation from SDSS to UBV
 	MV = round(V - tbl[i]['m_M'],1) 
 
-             # specific frequency
-	SN = round(gc_num[i]*10**(0.4*(MV+ 15 )),1)
+	# specific frequency
+	# gc_bum_intrinsic: GC candidates that belong to the host galaxy
+	gc_num_intrinsic = gc_num[i] - contamination[i]  
+	SN = round(gc_num_intrinsic*10**(0.4*(MV+ 15 )),1)
 	SN_z = round(gc_num[i]*10**(0.4*(Mz+ 15 )),1)
 
              #error bar calculated from contamination
-	SN_err = round(contamination[i]*10**(0.4*(MV+ 15)),1)  
-	SN_z_err = round(contamination[i]*10**(0.4*(Mz+ 15)),1)
+             # error = sqrt(gc_num_err^2 + conta_err^2)
+             # both gc_num and contamination follow poisson distribution
+	SN_err = round(sqrt(gc_num[i]+contamination[i])*10**(0.4*(MV+ 15)),1)  
+	SN_z_err = round(sqrt(gc_num[i]+contamination[i])*10**(0.4*(Mz+ 15)),1)
 
 	dEdata.add_row((filelist[i].rstrip(),fields[i],round(tbl[i]['ra'],5),round(tbl[i]['dec'],5),m_M,MV,rp,SN,SN_err,Mz,SN_z,SN_z_err))
 
-if os.path.isfile('dEdata.fits'):
-	os.system('rm dEdata.fits')
-	os.system('rm gcs.around.dEN.fits')
-gcs.write('gcs.around.dEN.fits')
-dEdata.write('dEdata.fits')
+gcs.write('gcs.around.dEN.fits',overwrite=True)
+dEdata.write('dEdata.fits',overwrite=True)
 plot_SN()#plot SN_list to MV diagram along with data from literature
